@@ -1,0 +1,26 @@
+aws:
+  region: us-east-1
+  s3_bucket: gridguard-ml-data
+  ecr_repo: gridguard-inference
+  ecr_registry: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+
+databricks:
+  workspace_url: https://<YOUR_WORKSPACE>.cloud.databricks.com
+  cluster_id: <YOUR_CLUSTER_ID>
+  catalog: gridguard
+  schema: energy
+  bronze_table: gridguard.energy.bronze_readings
+  silver_table: gridguard.energy.silver_readings
+  gold_table: gridguard.energy.gold_features
+
+mlflow:
+  tracking_uri: databricks
+  experiment_name: /gridguard/anomaly-detection
+  model_name: gridguard.energy.anomaly_detector
+  auc_threshold: 0.85
+  psi_alert_threshold: 0.2
+
+monitoring:
+  slo_accuracy_min: 0.90
+  slo_window_days: 30
+  prediction_log_table: gridguard.energy.prediction_log

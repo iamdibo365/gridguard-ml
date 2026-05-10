@@ -1,0 +1,53 @@
+{
+  "name": "GridGuard ML Pipeline",
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "bronze_ingestion",
+      "notebook_task": {
+        "notebook_path": "/gridguard/notebooks/01_bronze_ingestion",
+        "source": "WORKSPACE"
+      },
+      "existing_cluster_id": "<YOUR_CLUSTER_ID>",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "silver_transform",
+      "depends_on": [{ "task_key": "bronze_ingestion" }],
+      "notebook_task": {
+        "notebook_path": "/gridguard/notebooks/02_silver_transform",
+        "source": "WORKSPACE"
+      },
+      "existing_cluster_id": "<YOUR_CLUSTER_ID>",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_features",
+      "depends_on": [{ "task_key": "silver_transform" }],
+      "notebook_task": {
+        "notebook_path": "/gridguard/notebooks/03_gold_features",
+        "source": "WORKSPACE"
+      },
+      "existing_cluster_id": "<YOUR_CLUSTER_ID>",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "model_training",
+      "depends_on": [{ "task_key": "gold_features" }],
+      "notebook_task": {
+        "notebook_path": "/gridguard/notebooks/04_model_training",
+        "source": "WORKSPACE"
+      },
+      "existing_cluster_id": "<YOUR_CLUSTER_ID>",
+      "timeout_seconds": 3600
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "America/Chicago",
+    "pause_status": "UNPAUSED"
+  },
+  "email_notifications": {
+    "on_failure": ["<YOUR_EMAIL>"]
+  }
+}

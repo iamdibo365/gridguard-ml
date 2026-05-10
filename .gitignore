@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.log
+.model_version
+governance/output/
+monitoring/reports/
+.pytest_cache/
+inference/model/
+inference/logs/

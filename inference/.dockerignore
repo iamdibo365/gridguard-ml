@@ -1,0 +1,11 @@
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.git
+.venv
+*.md
+tests/
+.env
+*.log
+model/
+download_model.py
