@@ -7,5 +7,4 @@
 tests/
 .env
 *.log
-model/
 download_model.py

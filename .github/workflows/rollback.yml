@@ -1,0 +1,58 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Revision number to roll back to (leave empty for previous)'
+        required: false
+        default: ''
+
+jobs:
+  rollback:
+    name: Rollback EKS Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            us-east-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Rollback deployment
+        run: |
+          if [ -z "${{ github.event.inputs.revision }}" ]; then
+            echo "Rolling back to previous revision..."
+            kubectl rollout undo deployment/gridguard-inference -n gridguard
+          else
+            echo "Rolling back to revision ${{ github.event.inputs.revision }}..."
+            kubectl rollout undo deployment/gridguard-inference \
+              -n gridguard \
+              --to-revision=${{ github.event.inputs.revision }}
+          fi
+
+          kubectl rollout status deployment/gridguard-inference \
+            -n gridguard \
+            --timeout=120s
+
+      - name: Verify rollback
+        run: |
+          echo "=== Current pods ==="
+          kubectl get pods -n gridguard
+
+          echo "=== Rollout history ==="
+          kubectl rollout history deployment/gridguard-inference -n gridguard
+
+          LB_URL=$(kubectl get service gridguard-inference-svc \
+            -n gridguard \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          curl -f http://$LB_URL/health
+          echo "✓ Rollback complete and healthy"

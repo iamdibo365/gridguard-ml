@@ -2,11 +2,11 @@ aws:
   region: us-east-1
   s3_bucket: gridguard-ml-data
   ecr_repo: gridguard-inference
-  ecr_registry: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+  ecr_registry: 769449464095.dkr.ecr.us-east-1.amazonaws.com
 
 databricks:
-  workspace_url: https://<YOUR_WORKSPACE>.cloud.databricks.com
-  cluster_id: <YOUR_CLUSTER_ID>
+  workspace_url: https://dbc-241723d0-516c.cloud.databricks.com
+  cluster_id: dapid596e882f66e116a65f00e61c0f0a89b
   catalog: gridguard
   schema: energy
   bronze_table: gridguard.energy.bronze_readings
@@ -24,3 +24,4 @@ monitoring:
   slo_accuracy_min: 0.90
   slo_window_days: 30
   prediction_log_table: gridguard.energy.prediction_log
+  psi_alert_threshold: 0.2

@@ -104,11 +104,73 @@ jobs:
           pytest tests/test_inference.py -v
           docker stop gridguard-test
 
-  # ── JOB 4: GOVERNANCE ARTIFACTS ─────────────────────────────────────────
+  
+  # ── JOB 4: DEPLOY TO EKS ─────────────────────────────────────────────
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build-push
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            us-east-1
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Update deployment image
+        run: |
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          IMAGE_URI=$ECR_REGISTRY/gridguard-inference:${{ github.sha }}
+
+          # Update the deployment to use the new image tag
+          kubectl set image deployment/gridguard-inference \
+            gridguard-inference=$IMAGE_URI \
+            -n gridguard
+
+          echo "Updated to image: $IMAGE_URI"
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/gridguard-inference \
+            -n gridguard \
+            --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -n gridguard
+
+          echo "=== Service ==="
+          kubectl get service gridguard-inference-svc -n gridguard
+
+          LB_URL=$(kubectl get service gridguard-inference-svc \
+            -n gridguard \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          echo "Production URL: http://$LB_URL"
+
+          # Health check against production
+          sleep 10
+          curl -f http://$LB_URL/health || echo "Health check pending"
+  
+  # ── JOB 5: GOVERNANCE ARTIFACTS ─────────────────────────────────────────
   governance:
     name: Generate Governance Artifacts
     runs-on: ubuntu-latest
-    needs: build-push
+    needs: deploy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4

@@ -1,0 +1,83 @@
+name: Model Update Pipeline
+
+on:
+  workflow_dispatch:        # Triggered manually after retraining
+    inputs:
+      reason:
+        description: 'Reason for model update'
+        required: true
+        default: 'Scheduled retraining'
+
+jobs:
+  update-model:
+    name: Download and Deploy Updated Model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install python-dotenv 'mlflow-skinny[databricks]'
+
+      - name: Download latest champion model
+        run: |
+          cd inference
+          python download_model.py
+        env:
+          DATABRICKS_HOST:  ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          MLFLOW_MODEL_URI: models:/gridguard.energy.anomaly_detector@champion
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            us-east-1
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push updated image
+        run: |
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          IMAGE_URI=$ECR_REGISTRY/gridguard-inference:model-${{ github.sha }}
+
+          cd inference
+          DOCKER_BUILDKIT=1 docker build -t $IMAGE_URI .
+          docker tag $IMAGE_URI $ECR_REGISTRY/gridguard-inference:latest
+          docker push $IMAGE_URI
+          docker push $ECR_REGISTRY/gridguard-inference:latest
+
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Deploy updated model to EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+          kubectl set image deployment/gridguard-inference \
+            gridguard-inference=${{ env.IMAGE_URI }} \
+            -n gridguard
+
+          kubectl rollout status deployment/gridguard-inference \
+            -n gridguard \
+            --timeout=300s
+
+          echo "✓ Model update deployed"
+          kubectl get pods -n gridguard
+
+      - name: Verify production health
+        run: |
+          LB_URL=$(kubectl get service gridguard-inference-svc \
+            -n gridguard \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          sleep 15
+          curl -f http://$LB_URL/health
+          echo "✓ Production health check passed"
