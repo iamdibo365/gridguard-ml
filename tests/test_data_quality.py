@@ -53,13 +53,13 @@ def test_energy_values_non_negative():
 
 
 def test_gold_feature_columns_present():
-    rows    = run_query("DESCRIBE gridguard.energy.gold_features")
-    columns = [r[0] for r in rows]
-    required = [
+    rows     = run_query("DESCRIBE gridguard.energy.gold_features")
+    col_names = [r[0] for r in rows]
+    required  = [
         "energy_rolling_mean_24h", "energy_rolling_std_24h",
         "z_score_24h", "energy_lag_24h"
     ]
-    missing = [c for c in required if c not in columns]
+    missing = [c for c in required if c not in col_names]
     assert not missing, f"Missing Gold columns: {missing}"
 
     # Write version for downstream jobs
