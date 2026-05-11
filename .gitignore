@@ -10,3 +10,4 @@ monitoring/reports/
 .pytest_cache/
 inference/model/
 inference/logs/
+.env
