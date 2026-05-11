@@ -11,3 +11,5 @@ monitoring/reports/
 inference/model/
 inference/logs/
 .env
+.kuberlr/
+.DS_Store
