@@ -61,3 +61,12 @@ def test_gold_feature_columns_present():
     ]
     missing = [c for c in required if c not in columns]
     assert not missing, f"Missing Gold columns: {missing}"
+
+    # Write version for downstream jobs
+    with open(".model_version", "w") as f:
+        f.write(str(mv.version))
+    
+    # Verify it was written
+    with open(".model_version") as f:
+        written = f.read().strip()
+    print(f"✓ Model version written: '{written}'")

@@ -131,3 +131,15 @@ jobs:
         with:
           name: governance-artifacts
           path: governance/output/
+      - name: Check model version
+        run: |
+          echo "Model version from Job 2: ${{ needs.model-validation.outputs.model_version }}"
+          if [ -z "${{ needs.model-validation.outputs.model_version }}" ]; then
+            echo "ERROR: model_version is empty"
+            exit 1
+          fi
+      - name: Generate model card and NIST RMF checklist
+        run: |
+          python governance/generate_model_card.py \
+            --model-version ${{ needs.model-validation.outputs.model_version }}
+          python governance/nist_rmf_checklist.py
